@@ -18,7 +18,6 @@ SIM_RUNS = 2
 #print(NODE_POSITIONS)
 #print(NODE_CONNECTIONS)
 
-
 class SensorNode():
     def __init__(self, ident, position, ready_sensor, ready_filter, public_key):
         # Info
@@ -65,17 +64,20 @@ class SensorNode():
     
     
     def fuse_with(self, neighbours):
+        # Communication steps of the Paillier CI algorithm
         invtrs = [n._get_curr_invtr() for n in neighbours]
         invtrs.append(self._get_curr_invtr())
-
         sum_invtrs = sum(invtrs)
-
         weighted_ests_and_covs = [n._get_weighted_est_from_sum_invtr(sum_invtrs) for n in neighbours]
         weighted_ests_and_covs.append(self._get_weighted_est_from_sum_invtr(sum_invtrs))
 
+        # Communication for normal CI (for comparison)
+
+        # Store plaintext of fusion
+
+        # Store encryption of fusion
         self.curr_fused_est = sum([x[0] for x in weighted_ests_and_covs])
         self.curr_fused_cov = sum([x[1] for x in weighted_ests_and_covs])
-
         return
     
     def _get_curr_invtr(self):
@@ -89,18 +91,28 @@ class SensorNode():
 
 class Navigator():
     def __init__(self, secret_key):
+        # What to store
         self.sim_state_ests = []
         self.sim_state_covs = []
         self.sim_errors = []
         self.sk = secret_key
         return
     
-    def save_est_and_error(self, est, cov, gt):
-        self.sim_state_ests.append(est)
-        self.sim_state_covs.append(cov)
+    def save_est_and_error(self, enc_est, enc_cov, gt):
+        # Decryption
+
+        # Stores estimate and its error at each step as simulation progresses
+        self.sim_state_ests.append()
+        self.sim_state_covs.append()
         self.sim_errors.append(np.linalg.norm(est-gt))
         return
 
+def plot_sim_layout():
+    return
+
+def plot_avg_sim_errors(nav_list):
+
+    return
 
 def main():
     # State dimension
@@ -145,20 +157,29 @@ def main():
     
     # Encryption keys (generated once for speed)
     pk,sk = paillier.generate_paillier_keypair()
+
+    # Result storage
+    sim_navigators = []
     
+    # Loop sims
     for _ in range(SIM_RUNS):
 
+        # Ground truth
         gt_init_state = np.random.multivariate_normal(mean, cov)
         ground_truth = est.GroundTruth(F, Q, gt_init_state)
 
+        # Nodes
         nodes = []
         for i in range(NUM_NODES):
             s = est.SensorPure(n, m, H, R)
             f = est.KFilter(n, m, F, Q, H, R, init_state, init_cov)
             nodes.append(SensorNode(i, NODE_POSITIONS[i], s, f, pk))
         
+        # Navigator (and results)
         nav = Navigator(sk)
+        sim_navigators.append(nav)
         
+        # Start sim
         for k in range(SIM_STEPS):
 
             # Each node measures and/or estimates
@@ -180,8 +201,8 @@ def main():
                     closest_node = n
             nav.save_est_and_error(closest_node.curr_fused_est, closest_node.curr_fused_cov, gt)
     
-
-
+    # Plotting
+    plot_avg_sim_errors(sim_navigators)
 
     return
 
