@@ -144,9 +144,12 @@ class Navigator():
         return
 
 def plot_sim_layout():
+    # Plot the locations of the sensors, the initial navigator distribution and a sample path. Called "Layout"
     return
 
 def plot_avg_sim_errors(nav_list):
+    # Plot the errors which we are comparing. Encrypted, normal, and no fusion (sensors don't talk to each other)
+
     mean_errors_fused_dec = np.mean([n.sim_errors_fused_dec for n in nav_list], axis=0)
     mean_errors_fused = np.mean([n.sim_errors_fused for n in nav_list], axis=0)
     mean_errors_close = np.mean([n.sim_errors_close for n in nav_list], axis=0)
