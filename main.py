@@ -11,7 +11,7 @@ import encryption as enc
 import plotting as plot
 
 
-NUM_NODES = 16
+NUM_NODES = 4
 NODE_GRID_DIST = 10
 NODE_POSITIONS = [np.array([NODE_GRID_DIST*(x+1),NODE_GRID_DIST*(y+1)]) for x in range(int(NUM_NODES**0.5)) for y in range(int(NUM_NODES**0.5))]
 NODE_RANGE = 12
