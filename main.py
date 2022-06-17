@@ -17,11 +17,12 @@ NODE_POSITIONS = [np.array([NODE_GRID_DIST*(x+1),NODE_GRID_DIST*(y+1)]) for x in
 NODE_RANGE = 12
 NODE_CONNECTIONS = np.array([np.array([1 if np.linalg.norm(NODE_POSITIONS[c]-NODE_POSITIONS[r])<NODE_RANGE else 0 for c in range(NUM_NODES)]) for r in range(NUM_NODES)])
 
-SIM_STEPS = 20
-SIM_RUNS = 2
+SIM_STEPS = 50
+SIM_RUNS = 1000
 
 SHOW_LAYOUT_PLOT = False
 SHOW_ERROR_PLOT = False
+SHOW_EACH_SIM_PLOT = False
 
 
 class SensorNode():
@@ -181,13 +182,13 @@ class Navigator():
         plain_est_cloud = plain_cov_cloud@plain_inf_vec_cloud
 
         # Decryption and conversion to normal form
-        dec_scale = enc_inf_scale.decrypt(self.sk)
-        dec_cov = np.linalg.inv((1.0/dec_scale)*np.array([[x.decrypt(self.sk) for x in row] for row in enc_inf_mat]))
-        dec_est = dec_cov@((1.0/dec_scale)*np.array([x.decrypt(self.sk) for x in enc_inf_vec]))
+        dec_scale = None#enc_inf_scale.decrypt(self.sk)
+        dec_cov = None#np.linalg.inv((1.0/dec_scale)*np.array([[x.decrypt(self.sk) for x in row] for row in enc_inf_mat]))
+        dec_est = None#dec_cov@((1.0/dec_scale)*np.array([x.decrypt(self.sk) for x in enc_inf_vec]))
 
         # Conversion of plaintext to normal form
-        plain_cov = np.linalg.inv(plain_inf_mat)
-        plain_est = plain_cov@plain_inf_vec
+        plain_cov = None#np.linalg.inv(plain_inf_mat)
+        plain_est = None#plain_cov@plain_inf_vec
 
         # Stores estimates and errors at each step as simulation progresses
         self.sim_fused_ests_dec_cloud.append(dec_est_cloud)
@@ -205,11 +206,11 @@ class Navigator():
         self.sim_close_ests.append(close_est)
         self.sim_close_covs.append(close_cov)
 
-        self.sim_errors_fused_dec_cloud.append(np.linalg.norm(dec_est_cloud-gt))
-        self.sim_errors_fused_cloud.append(np.linalg.norm(plain_est_cloud-gt))
-        self.sim_errors_fused_dec.append(np.linalg.norm(dec_est-gt))
-        self.sim_errors_fused.append(np.linalg.norm(plain_est-gt))
-        self.sim_errors_close.append(np.linalg.norm(close_est-gt))
+        self.sim_errors_fused_dec_cloud.append(dec_est_cloud-gt)
+        self.sim_errors_fused_cloud.append(plain_est_cloud-gt)
+        #self.sim_errors_fused_dec.append(dec_est-gt)
+        #self.sim_errors_fused.append(plain_est-gt)
+        #self.sim_errors_close.append(close_est-gt)
         return
 
 def plot_sim_layout():
@@ -218,24 +219,24 @@ def plot_sim_layout():
 
 def plot_avg_sim_errors(nav_list):
     # Plot the errors which we are comparing. Encrypted, normal, and no fusion (sensors don't talk to each other)
-
-    mean_errors_fused_dec_cloud = np.mean([n.sim_errors_fused_dec_cloud for n in nav_list], axis=0)
-    mean_errors_fused_cloud = np.mean([n.sim_errors_fused_cloud for n in nav_list], axis=0)
-    mean_errors_fused_dec = np.mean([n.sim_errors_fused_dec for n in nav_list], axis=0)
-    mean_errors_fused = np.mean([n.sim_errors_fused for n in nav_list], axis=0)
-    mean_errors_close = np.mean([n.sim_errors_close for n in nav_list], axis=0)
+    mse_errors_fused_dec_cloud = np.mean([[x@x for x in n.sim_errors_fused_dec_cloud] for n in nav_list], axis=0)
+    mse_errors_fused_cloud = np.mean([[x@x for x in n.sim_errors_fused_cloud] for n in nav_list], axis=0)
+    mse_errors_fused_dec = np.mean([[x@x for x in n.sim_errors_fused_dec] for n in nav_list], axis=0)
+    mse_errors_fused = np.mean([[x@x for x in n.sim_errors_fused] for n in nav_list], axis=0)
+    mse_errors_close = np.mean([[x@x for x in n.sim_errors_close] for n in nav_list], axis=0)
 
     fig = plt.figure()
-    fig.set_size_inches(w=3.4, h=3.4)
+    fig.set_size_inches(w=3.4, h=2.8)
     ax = fig.add_subplot(111)
     ax.set_xlabel(r'Simulation Timesteps $k$')
     ax.set_ylabel(r'Mean Square Error (MSE)')
+    plt.subplots_adjust(left=0.16, right=0.84, bottom=0.16)
 
-    ax.plot(range(len(mean_errors_fused_dec_cloud)), mean_errors_fused_dec_cloud, c='tab:blue', label=r'Enc. FCI Cloud')
-    ax.plot(range(len(mean_errors_fused_cloud)), mean_errors_fused_cloud, c='tab:orange', linestyle='--', label=r'FCI Cloud')
-    ax.plot(range(len(mean_errors_fused_dec)), mean_errors_fused_dec, c='tab:green', label=r'Enc. FCI')
-    ax.plot(range(len(mean_errors_fused)), mean_errors_fused, c='tab:red', linestyle='--', label=r'FCI')
-    ax.plot(range(len(mean_errors_close)), mean_errors_close, c='tab:purple', linestyle='--', label=r'Nearest')
+    ax.plot(range(len(mse_errors_fused_dec_cloud)), mse_errors_fused_dec_cloud, c='tab:blue', label=r'Enc. FCI')
+    ax.plot(range(len(mse_errors_fused_cloud)), mse_errors_fused_cloud, c='tab:orange', linestyle='--', label=r'FCI')
+    #ax.plot(range(len(mse_errors_fused_dec)), mse_errors_fused_dec, c='tab:green', label=r'Enc. FCI')
+    #ax.plot(range(len(mse_errors_fused)), mse_errors_fused, c='tab:red', linestyle='--', label=r'FCI')
+    #ax.plot(range(len(mse_errors_close)), mse_errors_close, c='tab:purple', linestyle='--', label=r'Nearest')
 
     ax.legend()
 
@@ -289,6 +290,16 @@ def main():
 
     # Result storage
     sim_navigators = []
+
+    sensor_Rs = []
+    for i in range(NUM_NODES):
+        # "Random" measurement covariance for each sensor
+        scale = np.array([[6*np.random.random(), 0],[0, 6*np.random.random()]])
+        angle = 2*np.pi*np.random.random()
+        rotation = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+        sen_R = rotation@scale@rotation.T
+        sensor_Rs.append(sen_R)
+        print(sen_R)
     
     # Loop sims
     for sim_num in range(SIM_RUNS):
@@ -297,32 +308,26 @@ def main():
         gt_init_state = np.random.multivariate_normal(mean, cov)
         ground_truth = est.GroundTruth(F, Q, gt_init_state)
 
-        # Nodes
-        nodes = []
-        for i in range(NUM_NODES):
-
-            # "Random" measurement covariance for each sensor
-            scale = np.array([[6*np.random.random(), 0],[0, 6*np.random.random()]])
-            angle = 2*np.pi*np.random.random()
-            rotation = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
-            sen_R = rotation@scale@rotation.T
-
-            # Create node
-            s = est.SensorPure(n, m, H, sen_R)
-            f = est.KFilter(n, m, F, Q, H, sen_R, init_state, init_cov)
-            nodes.append(SensorNode(i, NODE_POSITIONS[i], s, f, pk))
-        
         # Navigator (and results)
         nav = Navigator(sk)
         sim_navigators.append(nav)
 
+        # Nodes
+        nodes = []
+        for i in range(NUM_NODES):
+            # Create node
+            s = est.SensorPure(n, m, H, sensor_Rs[i])
+            f = est.KFilter(n, m, F, Q, H, sensor_Rs[i], init_state, init_cov)
+            nodes.append(SensorNode(i, NODE_POSITIONS[i], s, f, pk))
+
         # Cloud
         cloud = Cloud(nodes)
 
-        # Temp
-        fig = plt.figure()
-        fig.set_size_inches(w=7, h=7)
-        ax = fig.add_subplot(111)
+        # Sim plotting
+        if SHOW_EACH_SIM_PLOT:
+            fig = plt.figure()
+            fig.set_size_inches(w=7, h=7)
+            ax = fig.add_subplot(111)
         
         # Start sim
         print("Running Simulation %d ..." % sim_num)
@@ -339,16 +344,16 @@ def main():
                 #    ax.add_artist(plot.get_cov_ellipse(n.sensor.R, z, 2, fill=False, linestyle='-', edgecolor='black'))
         
             # Each node fuses local with neighbours
-            for n in nodes:
-                neighbours = [x for i,x in enumerate(nodes) if NODE_CONNECTIONS[n.ident][i] == 1]
-                n.fuse_with(neighbours)
+            # for n in nodes:
+            #     neighbours = [x for i,x in enumerate(nodes) if NODE_CONNECTIONS[n.ident][i] == 1]
+            #     n.fuse_with(neighbours)
             
             # Cloud fuses all
             cloud.fuse_all()
 
             # Navigator takes closest fusion
-            closest_node = None
-            min_dist = NODE_GRID_DIST*NUM_NODES
+            closest_node = nodes[0]
+            min_dist = np.linalg.norm(closest_node.position - np.array([gt[0], gt[2]]))
             for n in nodes:
                 dist = np.linalg.norm(n.position - np.array([gt[0], gt[2]]))
                 if dist < min_dist:
@@ -368,40 +373,42 @@ def main():
                                    gt)
             
             # Temp
-            if k % 5 == 0:
-                print(k)
+            #if k % 5 == 0:
+            #    print(k)
             
-        # Temp
-        ax.plot([x[0] for x in nav.sim_gts], [x[2] for x in nav.sim_gts], c='gray')
-        ax.plot([x[0] for x in nav.sim_fused_ests_dec_cloud], [x[2] for x in nav.sim_fused_ests_dec_cloud], c='tab:blue', linestyle='-')
-        ax.plot([x[0] for x in nav.sim_fused_ests_cloud], [x[2] for x in nav.sim_fused_ests_cloud], c='tab:orange', linestyle='--')
-        ax.plot([x[0] for x in nav.sim_fused_ests_dec], [x[2] for x in nav.sim_fused_ests_dec], c='tab:green', linestyle='-')
-        ax.plot([x[0] for x in nav.sim_fused_ests], [x[2] for x in nav.sim_fused_ests], c='tab:red', linestyle='--')
-        ax.plot([x[0] for x in nav.sim_close_ests], [x[2] for x in nav.sim_close_ests], c='tab:purple', linestyle='--')
-        for k in range(len(nav.sim_gts)):
-            if k % 2 == 0:
-                ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_fused_covs_dec_cloud[k][0][0], nav.sim_fused_covs_dec_cloud[k][0][2]],[nav.sim_fused_covs_dec_cloud[k][2][0], nav.sim_fused_covs_dec_cloud[k][2][2]]]), 
-                                            np.array([nav.sim_fused_ests_dec_cloud[k][0], nav.sim_fused_ests_dec_cloud[k][2]]), 
-                                            2, fill=False, linestyle='-', edgecolor='tab:blue'))
+        # Sim plotting
+        if SHOW_EACH_SIM_PLOT:
+            ax.plot([x[0] for x in nav.sim_gts], [x[2] for x in nav.sim_gts], c='gray')
+            ax.plot([x[0] for x in nav.sim_fused_ests_dec_cloud], [x[2] for x in nav.sim_fused_ests_dec_cloud], c='tab:blue', linestyle='-')
+            ax.plot([x[0] for x in nav.sim_fused_ests_cloud], [x[2] for x in nav.sim_fused_ests_cloud], c='tab:orange', linestyle='--')
+            ax.plot([x[0] for x in nav.sim_fused_ests_dec], [x[2] for x in nav.sim_fused_ests_dec], c='tab:green', linestyle='-')
+            ax.plot([x[0] for x in nav.sim_fused_ests], [x[2] for x in nav.sim_fused_ests], c='tab:red', linestyle='--')
+            ax.plot([x[0] for x in nav.sim_close_ests], [x[2] for x in nav.sim_close_ests], c='tab:purple', linestyle='--')
+            for k in range(len(nav.sim_gts)):
+                if k % 2 == 0:
+                    ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_fused_covs_dec_cloud[k][0][0], nav.sim_fused_covs_dec_cloud[k][0][2]],[nav.sim_fused_covs_dec_cloud[k][2][0], nav.sim_fused_covs_dec_cloud[k][2][2]]]), 
+                                                np.array([nav.sim_fused_ests_dec_cloud[k][0], nav.sim_fused_ests_dec_cloud[k][2]]), 
+                                                2, fill=False, linestyle='-', edgecolor='tab:blue'))
 
-                ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_fused_covs_cloud[k][0][0], nav.sim_fused_covs_cloud[k][0][2]],[nav.sim_fused_covs_cloud[k][2][0], nav.sim_fused_covs_cloud[k][2][2]]]), 
-                                            np.array([nav.sim_fused_ests_cloud[k][0], nav.sim_fused_ests_cloud[k][2]]), 
-                                            2, fill=False, linestyle='--', edgecolor='tab:orange'))
+                    ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_fused_covs_cloud[k][0][0], nav.sim_fused_covs_cloud[k][0][2]],[nav.sim_fused_covs_cloud[k][2][0], nav.sim_fused_covs_cloud[k][2][2]]]), 
+                                                np.array([nav.sim_fused_ests_cloud[k][0], nav.sim_fused_ests_cloud[k][2]]), 
+                                                2, fill=False, linestyle='--', edgecolor='tab:orange'))
 
-                ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_fused_covs_dec[k][0][0], nav.sim_fused_covs_dec[k][0][2]],[nav.sim_fused_covs_dec[k][2][0], nav.sim_fused_covs_dec[k][2][2]]]), 
-                                            np.array([nav.sim_fused_ests_dec[k][0], nav.sim_fused_ests_dec[k][2]]), 
-                                            2, fill=False, linestyle='-', edgecolor='tab:green'))
+                    ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_fused_covs_dec[k][0][0], nav.sim_fused_covs_dec[k][0][2]],[nav.sim_fused_covs_dec[k][2][0], nav.sim_fused_covs_dec[k][2][2]]]), 
+                                                np.array([nav.sim_fused_ests_dec[k][0], nav.sim_fused_ests_dec[k][2]]), 
+                                                2, fill=False, linestyle='-', edgecolor='tab:green'))
 
-                ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_fused_covs[k][0][0], nav.sim_fused_covs[k][0][2]],[nav.sim_fused_covs[k][2][0], nav.sim_fused_covs[k][2][2]]]), 
-                                            np.array([nav.sim_fused_ests[k][0], nav.sim_fused_ests[k][2]]), 
-                                            2, fill=False, linestyle='--', edgecolor='tab:red'))
+                    ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_fused_covs[k][0][0], nav.sim_fused_covs[k][0][2]],[nav.sim_fused_covs[k][2][0], nav.sim_fused_covs[k][2][2]]]), 
+                                                np.array([nav.sim_fused_ests[k][0], nav.sim_fused_ests[k][2]]), 
+                                                2, fill=False, linestyle='--', edgecolor='tab:red'))
 
-                ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_close_covs[k][0][0], nav.sim_close_covs[k][0][2]],[nav.sim_close_covs[k][2][0], nav.sim_close_covs[k][2][2]]]), 
-                                            np.array([nav.sim_close_ests[k][0], nav.sim_close_ests[k][2]]), 
-                                            2, fill=False, linestyle='--', edgecolor='tab:purple'))
-        plt.show()
+                    ax.add_artist(plot.get_cov_ellipse(np.array([[nav.sim_close_covs[k][0][0], nav.sim_close_covs[k][0][2]],[nav.sim_close_covs[k][2][0], nav.sim_close_covs[k][2][2]]]), 
+                                                np.array([nav.sim_close_ests[k][0], nav.sim_close_ests[k][2]]), 
+                                                2, fill=False, linestyle='--', edgecolor='tab:purple'))
+            plt.show()
 
     # Plotting
+    plot.init_matplotlib_params(False, True)
     plot_avg_sim_errors(sim_navigators)
 
     return
