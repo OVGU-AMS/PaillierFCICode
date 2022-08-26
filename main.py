@@ -6,6 +6,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from phe import paillier
+import pickle
 import estimation as est
 import encryption as enc
 import plotting as plot
@@ -230,7 +231,8 @@ def plot_avg_sim_errors(nav_list):
     ax = fig.add_subplot(111)
     ax.set_xlabel(r'Simulation Timesteps $k$')
     ax.set_ylabel(r'Mean Square Error (MSE)')
-    plt.subplots_adjust(left=0.16, right=0.84, bottom=0.16)
+    ax.set_yscale('log')
+    plt.subplots_adjust(left=0.215, right=0.9, bottom=0.16)
 
     ax.plot(range(len(mse_errors_fused_dec_cloud)), mse_errors_fused_dec_cloud, c='tab:blue', label=r'Enc. FCI')
     ax.plot(range(len(mse_errors_fused_cloud)), mse_errors_fused_cloud, c='tab:orange', linestyle='--', label=r'FCI')
@@ -409,6 +411,7 @@ def main():
 
     # Plotting
     plot.init_matplotlib_params(False, True)
+    pickle.dump(sim_navigators, open("sim_output.p", "wb"))
     plot_avg_sim_errors(sim_navigators)
 
     return
